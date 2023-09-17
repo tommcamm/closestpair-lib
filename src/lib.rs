@@ -1,9 +1,7 @@
-use std::{error::Error, io};
-
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Point {
-    x: f64,
-    y: f64,
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Point {
@@ -14,6 +12,7 @@ impl Point {
     }
 }
 
+// Naive method
 fn brute_force(points: &[Point]) -> (Point, Point, f64) {
     let mut min_distance = f64::MAX;
     let mut closest_pair = (points[0], points[1]);
@@ -33,9 +32,12 @@ fn brute_force(points: &[Point]) -> (Point, Point, f64) {
 }
 
 
-fn closest_pair_recursive(px: &[Point], py: &[Point]) -> (Point, Point, f64) {
+// v.2 passing strip to rec. to avoid reallocations
+fn closest_pair_recursive(px: &[Point], py: &[Point], strip: &mut Vec<Point>) -> (Point, Point, f64) {
     let n = px.len();
-    if n <= 3 {
+    
+    // Increased to 7
+    if n <= 7 {
         return brute_force(px);
     }
 
@@ -54,12 +56,12 @@ fn closest_pair_recursive(px: &[Point], py: &[Point]) -> (Point, Point, f64) {
         }
     }
 
-    let (l1, r1, dl) = closest_pair_recursive(&lx, &ly);
-    let (l2, r2, dr) = closest_pair_recursive(&rx, &ry);
+    let (l1, r1, dl) = closest_pair_recursive(lx, &ly, strip);
+    let (l2, r2, dr) = closest_pair_recursive(rx, &ry, strip);
     let mut d = dl.min(dr);
     let mut closest_pair = if dl < dr { (l1, r1) } else { (l2, r2) };
 
-    let mut strip = Vec::new();
+    strip.clear();
     for &point in py.iter() {
         if (point.x - mid_point.x).abs() < d {
             strip.push(point);
@@ -82,58 +84,13 @@ fn closest_pair_recursive(px: &[Point], py: &[Point]) -> (Point, Point, f64) {
     (closest_pair.0, closest_pair.1, d)
 }
 
-fn closest_pair(points: &[Point]) -> (Point, Point, f64) {
+pub fn closest_pair(points: &[Point]) -> (Point, Point, f64) {
     let mut px: Vec<Point> = points.to_vec();
     let mut py: Vec<Point> = points.to_vec();
 
-    // filter by coordinate
     px.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
     py.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap());
 
-    closest_pair_recursive(&px, &py)
-}
-
-fn main() -> Result<(), Box<dyn Error>>{
-
-    let stdin = io::stdin();
-    let mut test_cases :Vec<Vec<Point>> = Vec::new();
-
-    loop {
-        let mut buf = String::new();
-        stdin.read_line(&mut buf).unwrap();
-
-        let n :i32 = buf.trim().parse().unwrap();
-
-        // Exit condition
-        if n == 0 {
-            break;
-        }
-
-        let mut points :Vec<Point> = Vec::new();
-        for _ in 0..n {
-            let mut buf = String::new();
-            stdin.read_line(&mut buf).unwrap();
-
-            let mut splitted_input = buf.split_ascii_whitespace();
-            points.push(Point { x: splitted_input
-                .next()
-                .unwrap()
-                .parse()
-                .unwrap()
-                , y: splitted_input.next()
-                .unwrap()
-                .parse()
-                .unwrap()
-             });
-        }
-
-        test_cases.push(points);
-    }
-
-    for test in test_cases {
-        let (p1, p2, _) = closest_pair(&test);
-        println!("{} {} {} {}", p1.x, p1.y, p2.x, p2.y);
-    }
-
-    Ok(())
+    let mut strip = Vec::with_capacity(points.len());
+    closest_pair_recursive(&px, &py, &mut strip)
 }
